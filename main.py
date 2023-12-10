@@ -29,7 +29,7 @@ class Map:
                     self.board[y][x - j + offset] = 1
                 if 0 <= x + j + offset < len(self.board):
                     self.board[y][x + j + offset] = 1
-        for i in range(randint(1, 3)):  # генерация рек
+        for i in range(randint(5, 10)):  # генерация рек
             y = randint(0, 20)
             if y == 0 or y == 20:
                 x = randint(0, 37)
