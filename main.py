@@ -1,43 +1,84 @@
 import pygame as pg
 from random import randint, choice
-from time import monotonic
+import os
+import sys
+from button import Button
+from Town import Town
 
 FPS = 75
+main_town_coords = ()
+flag_buy_menu = False
+farm_flag = False
 pg.init()
+board = [[0] * 100 for _ in range(100)]
+colors = {0: (93, 161, 48), 1: (100, 100, 100), 2: (0, 204, 204), 3: (255, 0, 0), 4: (252, 186, 3)}
 screen = pg.display.set_mode()
+main_town = Town(100, 10, screen)
 
 
-# 0 - пустая земля, 1 - горы, 2 - вода, 3 - основной город
+def load_image(name, colorkey=None):
+    fullname = os.path.join('data', name)
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pg.image.load(fullname)
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
+    return image
+def print_text(message, color, coords):
+    font = pg.font.Font(None, 30)
+    text_button = font.render(str(message), False, color)
+    screen.blit(text_button, coords)
 
+tile_images = {"farm":
+               load_image("sprites/farm.png")}
+all_sprites = pg.sprite.Group()
+tiles_group = pg.sprite.Group()
+# 0 - пустая земля, 1 - горы, 2 - вода, 3 - основной город, 4 - ферма
+
+class Tile(pg.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(tiles_group, all_sprites)
+
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(
+            0 * pos_x, 0 * pos_y)
 class Map:
     def __init__(self, width, height):
         self.flag = True
         self.width = width
         self.height = height
-        self.board = [[0] * width for _ in range(height)]
         self.visible_map = []
-        self.colors = {0: (93, 161, 48), 1: (100, 100, 100), 2: (0, 204, 204), 3: (255, 0, 0)}
+
         self.generation()
+        self.border = []
+        self.update_border()
         self.left = 10
         self.top = 10
         self.cell_size = 50
 
     def generation(self):
+        global main_town_coords
         for i in range(randint(40, 60)):  # генерация гор
             x, y = randint(0, 99), randint(0, 99)
             offset = randint(-3, 3)
             for j in range(randint(5, 10)):
                 a = randint(1, 2)
                 if a == 1:
-                    if 0 <= y - j + offset < len(self.board):
-                        self.board[y - j + offset][x] = 1
-                    if 0 <= y + j + offset < len(self.board):
-                        self.board[y + j + offset][x] = 1
+                    if 0 <= y - j + offset < len(board):
+                        board[y - j + offset][x] = 1
+                    if 0 <= y + j + offset < len(board):
+                        board[y + j + offset][x] = 1
                 else:
-                    if 0 <= x - j + offset < len(self.board):
-                        self.board[y][x - j + offset] = 1
-                    if 0 <= x + j + offset < len(self.board):
-                        self.board[y][x + j + offset] = 1
+                    if 0 <= x - j + offset < len(board):
+                        board[y][x - j + offset] = 1
+                    if 0 <= x + j + offset < len(board):
+                        board[y][x + j + offset] = 1
         for i in range(randint(19, 26)):  # генерация рек
             y = randint(0, 99)
             if y == 0 or y == 20:
@@ -48,26 +89,27 @@ class Map:
             flag = randint(0, 1)
             for j in range(randint(5, 9)):
                 if flag:
-                    if 0 <= y - j + offset < len(self.board):
-                        if self.board[y - j + offset][x] != 1:
-                            self.board[y - j + offset][x] = 2
-                    if 0 <= y + j + offset < len(self.board):
-                        if self.board[y + j + offset][x] != 1:
-                            self.board[y + j + offset][x] = 2
+                    if 0 <= y - j + offset < len(board):
+                        if board[y - j + offset][x] != 1:
+                            board[y - j + offset][x] = 2
+                    if 0 <= y + j + offset < len(board):
+                        if board[y + j + offset][x] != 1:
+                            board[y + j + offset][x] = 2
                 else:
-                    if 0 <= x - j + offset < len(self.board):
-                        self.board[y][x - j + offset] = 2
-                    if 0 <= x + j + offset < len(self.board):
-                        self.board[y][x + j + offset] = 2
+                    if 0 <= x - j + offset < len(board):
+                        board[y][x - j + offset] = 2
+                    if 0 <= x + j + offset < len(board):
+                        board[y][x + j + offset] = 2
         while True:  # генерация города
             castle_flag = True
             main_x, main_y = randint(1, 48), randint(1, 48)
+            main_town_coords = main_x, main_y
             for x in range(-1, 2):
                 for y in range(-1, 2):
-                    if self.board[main_y + y][main_x + x] != 0:
+                    if board[main_y + y][main_x + x] != 0:
                         castle_flag = False
             if castle_flag:
-                self.board[main_y][main_x] = 3
+                board[main_y][main_x] = 3
                 break
 
     def update(self, keys):
@@ -80,41 +122,41 @@ class Map:
         if keys[pg.K_a]:
             self.left += 10
 
-    def set_visible_map(self):
-        out_y = []
-        itog_out = []
-        qwe, index = 0, 0
-        for i in self.board:
-            if 3 in i:
-                index = self.board.index(i)
-                if index + 2 <= 100:  # + меняьб
-                    qwe = 1
-                    chet = -2  # сдез меняем шаг назад
-                else:
-                    qwe = -1
-                    chet = -1
-                while len(out_y) != 5:  # меняем колово
-                    if qwe == 1:
-                        if index + chet >= 0:
-                            out_y.append(self.board[index + chet])
-                    else:
-                        out_y.append(self.board[chet])
-                    chet += qwe
-        if qwe == -1:
-            out_y.reverse()
-        first_sres, secons_sres = 0, 0
-        for i in out_y:
-            if 3 in i:
-                index = out_y.index(i)
-        if out_y[index].index(1) <= 2:
-            secons_sres = 6
-        elif out_y[index].index(1) >= 8:
-            first_sres, secons_sres = 5, 10
-        else:
-            first_sres, secons_sres = out_y[index].index(1) - 2, out_y[index].index(1) + 3
-        for i in out_y:
-            itog_out.append(i[first_sres:secons_sres])
-        return itog_out
+    # def set_visible_map(self):
+    #     out_y = []
+    #     itog_out = []
+    #     qwe, index = 0, 0
+    #     for i in self.board:
+    #         if 3 in i:
+    #             index = self.board.index(i)
+    #             if index + 2 <= 100:  # + меняьб
+    #                 qwe = 1
+    #                 chet = -2  # сдез меняем шаг назад
+    #             else:
+    #                 qwe = -1
+    #                 chet = -1
+    #             while len(out_y) != 5:  # меняем колово
+    #                 if qwe == 1:
+    #                     if index + chet >= 0:
+    #                         out_y.append(self.board[index + chet])
+    #                 else:
+    #                     out_y.append(self.board[chet])
+    #                 chet += qwe
+    #     if qwe == -1:
+    #         out_y.reverse()
+    #     first_sres, secons_sres = 0, 0
+    #     for i in out_y:
+    #         if 3 in i:
+    #             index = out_y.index(i)
+    #     if out_y[index].index(1) <= 2:
+    #         secons_sres = 6
+    #     elif out_y[index].index(1) >= 8:
+    #         first_sres, secons_sres = 5, 10
+    #     else:
+    #         first_sres, secons_sres = out_y[index].index(1) - 2, out_y[index].index(1) + 3
+    #     for i in out_y:
+    #         itog_out.append(i[first_sres:secons_sres])
+    #     return itog_out
 
     def render(self):
         if self.cell_size < 19:
@@ -123,26 +165,59 @@ class Map:
             self.top = 50
         if self.left > 50:
             self.left = 50
-        if self.top < -940:
-            self.top = -940
+        # if self.top < -940:
+        #     self.top = -940
         grid = []
         for y in range(self.height):
             for x in range(self.width):
                 grid.append(pg.Rect(x * self.cell_size + self.left, y * self.cell_size + self.top, self.cell_size,
                                     self.cell_size))
         grid = iter(grid)
-        for x in self.board:
-            for y in x:
+        # for y in self.board:
+        #     for x in y:
+        #         rect = next(grid)
+        #         if x == 4:
+        #             Tile("sprites/farm.png", x, y)
+        #         else:
+        #             pg.draw.rect(screen, self.colors.get(x), rect)
+        #             pg.draw.rect(screen, (0, 0, 0), rect, 1)
+        for y in range(len(board)):
+            for x in range(len(board[y])):
                 rect = next(grid)
-                pg.draw.rect(screen, self.colors.get(y), rect)
-                pg.draw.rect(screen, (0, 0, 0), rect, 1)
+                if board[y][x] == 4:
+                    Tile("farm", x, y)
+                else:
+                    pg.draw.rect(screen, colors.get(board[y][x]), rect)
+                    pg.draw.rect(screen, (0, 0, 0), rect, 1)
+
+        for i in self.border:
+            pg.draw.rect(screen, (255, 0, 0), (
+                self.left + i[0] * self.cell_size, self.top + self.cell_size * i[1], self.cell_size, self.cell_size), 2)
         pg.draw.rect(screen, (131, 79, 42), (0, 970, 2000, 110))
 
     def focus_camera(self, count):
         self.cell_size += count
 
+    def move_camera(self, keys=None, mouse_pos=None):
+        if keys[pg.K_w] or mouse_pos[1] < 20:
+            self.top += 10
+        if keys[pg.K_s] or mouse_pos[1] > 1060:
+            self.top += -10
+        if keys[pg.K_d] or mouse_pos[0] > 1900:
+            self.left += -10
+        if keys[pg.K_a] or mouse_pos[0] < 20:
+            self.left += 10
+
+    def update_border(self):
+        for y in range(99):
+            for x in range(99):
+                if board[y][x] == 3 or board[y][x] == 4:
+                    for i in range(-2, 3):
+                        for j in range(-2, 3):
+                            self.border.append((x + i, y + j))
+
     def get_click(self, mouse_pos):
-        self.on_click(self.get_cell(mouse_pos))
+        self.on_click(self.get_cell(mouse_pos), mouse_pos)
 
     def get_cell(self, mouse_pos):
         if (self.left < mouse_pos[0] < self.width * self.cell_size + self.left
@@ -152,62 +227,44 @@ class Map:
             return col, row
         return None
 
-    def on_click(self, cell_coords):
-        print(cell_coords)
-        print(self.cell_size)
-        print(self.top)
+    def on_click(self, cell_coords, mouse_pos):
+        print(board[cell_coords[1]][cell_coords[0]])
+        global flag_buy_menu, farm_flag
+        if cell_coords == main_town_coords:
+            flag_buy_menu = True
+        elif mouse_pos[1] < 970:
+            flag_buy_menu = False
+        if farm_flag and cell_coords in self.border and board[cell_coords[1]][
+            cell_coords[0]] == 0 and main_town.money >= 50:
+            board[cell_coords[1]][cell_coords[0]] = 4
+            farm_flag = False
+            main_town.buy(50)
+            main_town.money_for_move += 10
+            self.update_border()
+        elif farm_flag and cell_coords not in self.border:
+            farm_flag = False
+
+map_ = Map(100, 100)
+def set_farm():
+    global farm_flag
+    farm_flag = True
 
 
-class Town:
-    def __init__(self, money, money_for_move):
-        self.money = money
-        self.money_for_move = money_for_move
-
-    def update_money(self):
-        self.money += self.money_for_move
-
-    def print_money(self):
-        pg.draw.rect(screen, (213, 160, 51), (10, 985, 150, 80))
-        font = pg.font.Font(None, 30)
-        text_button = font.render(str(self.money), False, (18, 41, 57))
-        screen.blit(text_button, (20, 1012))
-
-
-class Button:
-    def __init__(self, width, height, color, active_color):
-        self.width = width
-        self.height = height
-        self.color = color
-        self.active_color = active_color
-
-    def draw(self, x, y, text, action=None):
-        self.action = action
-        self.get_press = False
-        mouse = pg.mouse.get_pos()
-        click = pg.mouse.get_pressed()
-        if x < mouse[0] < x + self.width and y < mouse[1] < y + self.height:
-            pg.draw.rect(screen, self.active_color, (x, y, self.width, self.height))
-            if click[0] == 1 and action is not None:
-                action()
-                pg.time.delay(300)
-
-        else:
-            pg.draw.rect(screen, self.color, (x, y, self.width, self.height))
-        font = pg.font.Font(None, 30)
-        text_button = font.render(text, False, (18, 41, 57))
-        screen.blit(text_button, (x + 15, y + 30))
-
-
-main_town = Town(100, 10)
+def buy_menu():
+    pg.draw.rect(screen, (173, 151, 102), (200, 985, 1450, 80))
+    farm = Button(90, 70, (87, 75, 51), (97, 85, 61), screen)
+    farm.draw(250, 990, 50, set_farm)
+    pg.draw.rect(screen, (252, 186, 3), (295, 1015, 30, 30))
 
 
 def next_move_def():
+    global flag_buy_menu
+    flag_buy_menu = False
     main_town.update_money()
 
 
 def main():
-    map_ = Map(100, 100)
-    next_move = Button(200, 80, (42, 94, 131), (70, 121, 157))
+    next_move = Button(200, 80, (42, 94, 131), (70, 121, 157), screen)
     clock = pg.time.Clock()
     running = True
     while running:
@@ -222,11 +279,15 @@ def main():
                 if event.button == 5:
                     map_.focus_camera(-1)
         keys = pg.key.get_pressed()
-        map_.update(keys)
+        map_.move_camera(keys, pg.mouse.get_pos())
         screen.fill((0, 204, 204))
         map_.render()
         next_move.draw(1700, 985, "Следующий ход", next_move_def)
         main_town.print_money()
+        if flag_buy_menu:
+            buy_menu()
+        if farm_flag:
+            pg.draw.rect(screen, (252, 186, 3), (pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], 30, 30))
         pg.display.flip()
         clock.tick(FPS)
     pg.quit()
