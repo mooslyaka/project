@@ -98,7 +98,7 @@ class Warrior:
         self.y = y
         self.level = level
         self.move = level + 2
-        self.radius = set()
+        self.radius = []
         self.radius_flag = False
         self.town = town
 
@@ -106,20 +106,25 @@ class Warrior:
         for i in range(-self.move, self.move + 1):
             for j in range(-self.move, self.move + 1):
                 if 0 <= self.y + i <= 99 and 0 <= self.x + j <= 99:
-                    if board[self.y + i][self.x + j] == 0:
-                        self.radius.add((self.x + j, self.y + i))
-        self.radius.add((self.x, self.y))
-
+                    if board[self.y + i][self.x + j] not in [1, 2]:
+                        self.radius.append((self.x + j, self.y + i))
+        self.radius.append((self.x, self.y))
+        # for x, y in self.radius:
+        #     if board[y][x] != 0:
+        #         for i in (-1, 2):
+        #             for j in (-1, 2):
+        #                 if 0 <= x + i <= 99 and 0 <= y + j <= 99 and (x + i, y + j) in self.radius:
+        #                     print("zxc")
+        #                     self.radius.remove((x + i, y + j))
 
     def print_radius(self):
+
         for x, y in self.radius:
             if 0 <= x <= 99 and 0 <= y <= 99:
                 pg.draw.rect(screen, (255, 215, 0),
                              (
                                  left + x * cell_size, top + y * cell_size, cell_size, cell_size),
                              10)
-        # esc_button = Button(150, 70, (230, 12, 12), (255, 12, 12), screen)
-        # esc_button.draw(250, 990, "Отмена", self.esc_radius)
 
     def moved(self, coords):
         way = int(((coords[0] - self.x) ** 2 + (coords[1] - self.y) ** 2) ** 0.5)
@@ -206,7 +211,8 @@ class Map:
                         castle_flag = False
             if castle_flag and int(((main_town_coords[0] - main_x) ** 2 + (
                     main_town_coords[1] - main_y) ** 2) ** 0.5) >= 10:
-                enemies.append(EnemyTown(100, 20, enemy_color[enemy_flag], main_x, main_y, screen, enemy_flag, board))
+                enemies.append(
+                    EnemyTown(100000, 20, enemy_color[enemy_flag], main_x, main_y, screen, enemy_flag, board))
                 board[main_y][main_x] = 9
                 enemy_flag += 1
         for i in enemies:
@@ -283,7 +289,6 @@ class Map:
                         for j in range(-2, 3):
                             self.border.append((x + i, y + j))
 
-
     def get_click(self, mouse_pos):
         self.on_click(self.get_cell(mouse_pos), mouse_pos)
 
@@ -323,14 +328,21 @@ class Map:
             #     warrior_flag = 0
             elif board[cell_coords[1]][cell_coords[0]] in [5, 6, 7, 8]:
                 for i in warriors:
-                    if i.y == cell_coords[1] and i.x == cell_coords[0]:
-                        i.available_radius()
-                        i.radius_flag = True
+                    if i.town == 7:
+                        if i.y == cell_coords[1] and i.x == cell_coords[0]:
+                            i.available_radius()
+                            i.radius_flag = True
+
             for i in warriors:
                 if i.radius_flag:
-                    if cell_coords in i.radius:
+                    if cell_coords in i.radius and board[cell_coords[1]][cell_coords[0]] in [5, 6, 7, 8]:
+                        print(i.level + 4, board[cell_coords[1]][cell_coords[0]])
+                        if i.level + 4 >= board[cell_coords[1]][cell_coords[0]]:
+                            print("zxc")
+                            i.moved(cell_coords)
+                    elif cell_coords in i.radius and board[cell_coords[1]][cell_coords[0]] == 0:
                         i.moved(cell_coords)
-                    else:
+                    elif cell_coords not in i.radius:
                         i.radius_flag = False
 
 
@@ -352,6 +364,8 @@ warrior_1 = Button(90, 70, (87, 75, 51), (97, 85, 61), screen)
 warrior_2 = Button(90, 70, (87, 75, 51), (97, 85, 61), screen)
 warrior_3 = Button(90, 70, (87, 75, 51), (97, 85, 61), screen)
 warrior_4 = Button(90, 70, (87, 75, 51), (97, 85, 61), screen)
+
+
 def buy_menu():
     pg.draw.rect(screen, (173, 151, 102), (200, 985, 1450, 80))
     farm.draw(250, 990, 50, set_farm)

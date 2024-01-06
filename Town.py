@@ -58,7 +58,7 @@ class EnemyTown(Town):
         if what == 1 and self.money >= 50:
             for i in range(-2, 3):
                 for j in range(-2, 3):
-                    if 0 <= coords[0] + i < 99 and 0 <= coords[1] + j < 99:
+                    if 0 <= coords[0] + i < 99 and 0 <= coords[1] + j <= 99:
                         self.border.append((coords[0] + i, coords[1] + j))
             self.buy(50)
             self.money_for_move += 10
