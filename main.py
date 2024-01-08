@@ -17,7 +17,7 @@ enemy_color = [(0, 255, 68), (55, 237, 198), (10, 19, 196), (106, 10, 196), (212
                (242, 238, 17), (242, 156, 17)]
 top, left, cell_size = 2, 2, 50
 screen = pg.display.set_mode()
-main_town = MyTown(1000, 100, screen)
+main_town = MyTown(1000, 100, screen,  7)
 warriors = []
 enemies = []
 
@@ -97,7 +97,7 @@ class Warrior:
         self.x = x
         self.y = y
         self.level = level
-        self.move = level + 2
+        self.move = level
         self.radius = []
         self.radius_flag = False
         self.town = town
@@ -210,7 +210,7 @@ class Map:
                     if int(((i.x - main_x) ** 2 + (i.y - main_y) ** 2) ** 0.5) <= 10:
                         castle_flag = False
             if castle_flag and int(((main_town_coords[0] - main_x) ** 2 + (
-                    main_town_coords[1] - main_y) ** 2) ** 0.5) >= 10:
+                    main_town_coords[1] - main_y) ** 2) ** 0.5) >= 15:
                 enemies.append(
                     EnemyTown(100000, 20, enemy_color[enemy_flag], main_x, main_y, screen, enemy_flag, board))
                 board[main_y][main_x] = 9
@@ -287,7 +287,13 @@ class Map:
                 if board[y][x] == 3 or board[y][x] == 4:
                     for i in range(-2, 3):
                         for j in range(-2, 3):
-                            self.border.append((x + i, y + j))
+                            if 0 <= x + i <= 99 and 0 <= y + j <= 99:
+                                self.border.append((x + i, y + j))
+        self.border = list(set(self.border))
+        for i in enemies:
+            for j in self.border:
+                if j in i.border:
+                    self.border.remove(j)
 
     def get_click(self, mouse_pos):
         self.on_click(self.get_cell(mouse_pos), mouse_pos)
@@ -301,7 +307,6 @@ class Map:
 
     def on_click(self, cell_coords, mouse_pos):
         global flag_buy_menu, farm_flag, warrior_flag
-
         if cell_coords:
             if cell_coords == main_town_coords:
                 flag_buy_menu = True
@@ -332,18 +337,41 @@ class Map:
                         if i.y == cell_coords[1] and i.x == cell_coords[0]:
                             i.available_radius()
                             i.radius_flag = True
-
+            money_for_lose = {5: 10, 6: 20, 7: 30, 8: 50}
             for i in warriors:
-                if i.radius_flag:
-                    if cell_coords in i.radius and board[cell_coords[1]][cell_coords[0]] in [5, 6, 7, 8]:
-                        print(i.level + 4, board[cell_coords[1]][cell_coords[0]])
-                        if i.level + 4 >= board[cell_coords[1]][cell_coords[0]]:
-                            print("zxc")
+                for j in enemies:
+                    if i.radius_flag:
+                        if cell_coords in i.radius and board[cell_coords[1]][cell_coords[0]] in [5, 6, 7, 8]:
+                            for h in warriors:
+                                if (h.x, h.y) == cell_coords:
+                                    if i.level + 4 >= board[cell_coords[1]][cell_coords[0]] and h.town != 7:
+                                        i.moved(cell_coords)
+                                        i.move = 0
+                                        j.money_for_move += money_for_lose.get(board[cell_coords[1]][cell_coords[0]])
+                                        continue
+                        elif cell_coords in i.radius and board[cell_coords[1]][
+                            cell_coords[0]] == 9 and i.level >= 3 and cell_coords in j.border:
+                            for k in j.border:
+                                if board[k[1]][k[0]] == 4:
+                                    board[k[1]][k[0]] = 0
+                                    continue
+                            for b in warriors:
+                                if b.town == j.number:
+                                    board[b.y][b.x] = 0
                             i.moved(cell_coords)
-                    elif cell_coords in i.radius and board[cell_coords[1]][cell_coords[0]] == 0:
-                        i.moved(cell_coords)
-                    elif cell_coords not in i.radius:
-                        i.radius_flag = False
+                            j.border.clear()
+                            enemies.remove(j)
+                            i.move = 0
+                        elif cell_coords in i.radius and board[cell_coords[1]][cell_coords[0]] == 0:
+                            i.moved(cell_coords)
+                        elif cell_coords in i.radius and board[cell_coords[1]][
+                            cell_coords[0]] == 4 and cell_coords in j.border:
+                            i.moved(cell_coords)
+                            j.money_for_move -= 10
+                            i.move = 0
+
+                        elif cell_coords not in i.radius:
+                            i.radius_flag = False
 
 
 map_ = Map(100, 100)
@@ -391,21 +419,37 @@ def next_move_def():
                     board[y][x] = 0
                     main_town.money_for_move += 10
         main_town.money = 0
-    for i in warriors:
-        i.move = i.level + 2
     for i in enemies:
         i.update_money()
-        coords, what = i.generate_move()
-        if not what:
-            continue
-        if what == "farm":
-            board[coords[1]][coords[0]] = 4
-        if what[:-1] == "warrior":
-            warriors.append(Warrior(coords[0], coords[1], int(what[-1]), i.number))
-            board[coords[1]][coords[0]] = int(what[-1]) + 4
-        i.update_border()
-
-
+        for j in warriors:
+            if (j.x, j.y) in i.border and i.number != j.town:
+                i.set_warrior(i.update_coords())
+        for j in range(5):
+            coords, what = i.generate_move()
+            if not what:
+                continue
+            if what == "farm":
+                board[coords[1]][coords[0]] = 4
+            if what[:-1] == "warrior":
+                warriors.append(Warrior(coords[0], coords[1], int(what[-1]), i.number))
+                board[coords[1]][coords[0]] = int(what[-1]) + 4
+        if i.tacktik:
+            for j in warriors:
+                if j.town == i.number:
+                    j.x 
+    first, first_warriors = choice(enemies), 0
+    enemies.append(main_town)
+    second, second_warriors = choice(enemies), 0
+    enemies.remove(main_town)
+    for i in warriors:
+        i.move = i.level
+        if i.town == first.number:
+            first_warriors += 1
+        if i.town == second.number:
+            second_warriors += 1
+    if first_warriors > second_warriors:
+        first.tacktik = True
+        
 def main():
     next_move = Button(200, 80, (42, 94, 131), (70, 121, 157), screen)
     clock = pg.time.Clock()
@@ -437,7 +481,6 @@ def main():
             pg.draw.rect(screen, (252, 186, 3), (pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], 30, 30))
         if warrior_flag:
             pg.draw.rect(screen, (252, 23, 3), (pg.mouse.get_pos()[0], pg.mouse.get_pos()[1], 15, 30))
-
         pg.display.flip()
         clock.tick(FPS)
     pg.quit()

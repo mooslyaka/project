@@ -9,10 +9,11 @@ def print_text(message, color, coords, screen):
 
 
 class Town:
-    def __init__(self, money, money_for_move, screen):
+    def __init__(self, money, money_for_move, screen, number):
         self.money = money
         self.money_for_move = money_for_move
         self.screen = screen
+        self.number = number
 
     def update_money(self):
         self.money += self.money_for_move
@@ -28,7 +29,7 @@ class MyTown(Town):
 
 
 class EnemyTown(Town):
-    def __init__(self, money, money_for_move, color, x, y, screen, number, board):
+    def __init__(self, money, money_for_move, color, x, y, screen, number,board):
         self.color = color
         self.money = money
         self.money_for_move = money_for_move
@@ -38,16 +39,18 @@ class EnemyTown(Town):
         self.number = number
         self.border = []
         self.board = board
+        self.tacktik = False
 
     def update_border(self):
         for i in range(-2, 3):
             for j in range(-2, 3):
-                if 0 <= self.x + i < 99 and 0 <= self.y + j < 99:
+                if 0 <= self.x + i <= 99 and 0 <= self.y + j <= 99:
                     self.border.append((self.x + i, self.y + j))
 
     def update_coords(self):
         coords = choice(self.border)
         return coords
+
     def generate_move(self):
         what = randint(1, 4)
         flag = True
@@ -64,20 +67,29 @@ class EnemyTown(Town):
             self.money_for_move += 10
             return coords, "farm"
         elif what == 2:
-            if self.money >= 300 and self.money_for_move - 50 > 0:
-                self.money -= 300
-                self.money_for_move -= 50
-                return coords, "warrior4"
-            if self.money >= 170 and self.money_for_move - 30 > 0:
-                self.money -= 170
-                self.money_for_move -= 30
-                return coords, "warrior3"
-            if self.money >= 100 and self.money_for_move - 20 > 0:
-                self.money -= 100
-                self.money_for_move -= 20
-                return coords, "warrior2"
-            if self.money >= 50 and self.money_for_move - 10 > 0:
-                self.money -= 50
-                self.money_for_move -= 10
-                return coords, "warrior1"
+            return self.set_warrior(coords)
+        if self.tacktik:
+            pass
+
         return False, False
+    def set_warrior(self, coords):
+        if self.money >= 300 and self.money_for_move - 50 > 0:
+            self.money -= 300
+            self.money_for_move -= 50
+            return coords, "warrior4"
+        if self.money >= 170 and self.money_for_move - 30 > 0:
+            self.money -= 170
+            self.money_for_move -= 30
+            return coords, "warrior3"
+        if self.money >= 100 and self.money_for_move - 20 > 0:
+            self.money -= 100
+            self.money_for_move -= 20
+            return coords, "warrior2"
+        if self.money >= 50 and self.money_for_move - 10 > 0:
+            self.money -= 50
+            self.money_for_move -= 10
+            return coords, "warrior1"
+        return False, False
+
+    def lose(self):
+        self.border.clear()
