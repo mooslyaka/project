@@ -27,7 +27,6 @@ sms = ""
 chet = 0
 
 
-
 # 0 - земдля 1 - гроры 2 - вода  3- город 4 - ферма 5,6,7,8- воинЫ 9 - город чужой
 
 def load_image(name, colorkey=None):
@@ -70,7 +69,7 @@ class Tile(pg.sprite.Sprite):
         screen.blit(self.image, self.rect)
 
 
-def render(height, width, border): # прорисовка карты
+def render(height, width, border):  # прорисовка карты
     global top, left, cell_size
     if cell_size < 19:
         cell_size = 19
@@ -78,8 +77,6 @@ def render(height, width, border): # прорисовка карты
         top = 50
     if left > 50:
         left = 50
-    #   if self.top < -940:
-    # self.top = -940
     grid = []
     for y in range(height):
         for x in range(width):
@@ -125,15 +122,8 @@ class Warrior:
                     if board[self.y + i][self.x + j] not in [1, 2]:
                         self.radius.append((self.x + j, self.y + i))
         self.radius.append((self.x, self.y))
-        # for x, y in self.radius:
-        #     if board[y][x] != 0:
-        #         for i in (-1, 2):
-        #             for j in (-1, 2):
-        #                 if 0 <= x + i <= 99 and 0 <= y + j <= 99 and (x + i, y + j) in self.radius:
-        #                     print("zxc")
-        #                     self.radius.remove((x + i, y + j))
 
-    def print_radius(self): #прорисовка радиуса
+    def print_radius(self):  # прорисовка радиуса
         for x, y in self.radius:
             if 0 <= x <= 99 and 0 <= y <= 99:
                 pg.draw.rect(screen, (255, 215, 0),
@@ -141,7 +131,7 @@ class Warrior:
                                  left + x * cell_size, top + y * cell_size, cell_size, cell_size),
                              10)
 
-    def moved(self, coords): # движение
+    def moved(self, coords):  # движение
         way = int(((coords[0] - self.x) ** 2 + (coords[1] - self.y) ** 2) ** 0.5)
         if way != 0:
             self.move -= way
@@ -163,7 +153,7 @@ class Map:
         self.border = []
         self.update_border()
 
-    def generation(self): #генерация карты
+    def generation(self):  # генерация карты
         global main_town_coords
         for i in range(randint(40, 60)):  # генерация гор
             x, y = randint(0, 99), randint(0, 99)
@@ -311,8 +301,7 @@ class Map:
             if warrior_flag and cell_coords not in self.border:
                 warrior_flag = 0
 
-            # elif warrior_flag and cell_coords not in self.border:
-            #     warrior_flag = 0
+
             elif board[cell_coords[1]][cell_coords[0]] in [5, 6, 7, 8]:
                 for i in warriors:
                     if i.town == 7:
